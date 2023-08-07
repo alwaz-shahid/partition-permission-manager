@@ -1,75 +1,55 @@
 import os
 import click
-import getpass
-
-def permission_string(permissions):
-    return "".join([
-        "read" if permissions & 0o400 else "-",
-        "write" if permissions & 0o200 else "-",
-        "execute" if permissions & 0o100 else "-",
-    ])
-
-def display_manual():
-    click.echo("Welcome to the Partition and Disk Permission Manager for Linux!")
-    click.echo("===============================================================\n")
-    click.echo("This tool allows you to view and modify permissions for partitions and disks.")
-    click.echo("You can use natural language like 'r' for read, 'w' for write, and 'e' for execute when setting permissions.")
-    click.echo("Here are some usage examples:")
-    click.echo("  - 'r w e' or '7': Give read, write, and execute permissions.")
-    click.echo("  - 'r e' or '5': Give read and execute permissions.")
-    click.echo("  - 'r' or '4': Give read-only permissions.\n")
 
 @click.command()
 def main():
-    display_manual()
+    """Partition Permissions Manager"""
+    partitions = get_partitions()
 
-    current_user = getpass.getuser()
-    click.echo(f"Current User: {current_user}\n")
+    click.echo("Available Partitions:")
+    for idx, partition in enumerate(partitions, start=1):
+        click.echo(f"{idx}. {partition}")
 
-    partitions_output = os.popen("lsblk -o NAME,MOUNTPOINT,SIZE,FSTYPE --noheadings").read()
-    partitions = partitions_output.strip().split("\n")
+    partition_choice = click.prompt("\nEnter the number of the partition to manage permissions:", type=int)
+    if 1 <= partition_choice <= len(partitions):
+        selected_partition = partitions[partition_choice - 1]
+        display_partition_info(selected_partition)
+        change_permissions(selected_partition)
+    else:
+        click.echo("Invalid partition choice.")
 
-    for partition_info in partitions:
-        partition_info = partition_info.split()
-        if len(partition_info) < 4:
-            continue
+def get_partitions():
+    partitions_output = os.popen("lsblk -o MOUNTPOINT").read()
+    partitions = partitions_output.strip().split("\n")[1:]
+    return [partition for partition in partitions if partition]
 
-        name, mountpoint, size, fstype = partition_info
+def display_partition_info(partition):
+    click.echo(f"\nPartition: {partition}")
+    permissions = os.stat(os.path.join("/", partition))
+    click.echo(f"  Owner Permissions: {permission_string(permissions.st_mode & 0o700)}")
+    click.echo(f"  Group Permissions: {permission_string(permissions.st_mode & 0o070)}")
+    click.echo(f"  Others Permissions: {permission_string(permissions.st_mode & 0o007)}")
 
-        if mountpoint == "":
-            continue
+def change_permissions(partition):
+    new_permissions = click.prompt("\nEnter new permissions (e.g., read write execute = 7):", default="7")
+    if new_permissions.lower() == "read write execute" or new_permissions == "7":
+        os.chmod(os.path.join("/", partition), 0o777)
+        click.echo("Permissions updated successfully.\n")
+    elif new_permissions.lower() == "read execute" or new_permissions == "5":
+        os.chmod(os.path.join("/", partition), 0o555)
+        click.echo("Permissions updated successfully.\n")
+    elif new_permissions.lower() == "read" or new_permissions == "4":
+        os.chmod(os.path.join("/", partition), 0o444)
+        click.echo("Permissions updated successfully.\n")
+    else:
+        click.echo("Invalid permission input. Permissions remain unchanged.\n")
 
-        partition_path = os.path.join("/", mountpoint)
-        try:
-            permissions = os.stat(partition_path)
-            
-            click.echo(f"Partition: {name}")
-            click.echo(f"  Mount Point: {mountpoint}")
-            click.echo(f"  Size: {size}")
-            click.echo(f"  File System Type: {fstype}")
-            click.echo(f"  Owner Permissions: {permission_string(permissions.st_mode & 0o700)}")
-            click.echo(f"  Group Permissions: {permission_string(permissions.st_mode & 0o070)}")
-            click.echo(f"  Others Permissions: {permission_string(permissions.st_mode & 0o007)}\n")
-
-            choice = click.confirm("Do you want to change permissions?", default=False)
-            if choice:
-                new_permissions = click.prompt("Enter new permissions (e.g., r w e = 7):", default="7")
-                permission_value = 0
-                if "r" in new_permissions:
-                    permission_value |= 0o400
-                if "w" in new_permissions:
-                    permission_value |= 0o200
-                if "e" in new_permissions:
-                    permission_value |= 0o100
-
-                os.chmod(partition_path, permission_value)
-                click.echo("Permissions updated successfully.\n")
-            else:
-                click.echo("Permissions remain unchanged.\n")
-
-        except OSError as e:
-            click.echo(f"Error accessing partition: {mountpoint}")
-            click.echo(f"Error details: {e}\n")
+def permission_string(permissions):
+    return "".join([
+        "r" if permissions & 0o400 else "-",
+        "w" if permissions & 0o200 else "-",
+        "x" if permissions & 0o100 else "-",
+    ])
 
 if __name__ == "__main__":
     main()
