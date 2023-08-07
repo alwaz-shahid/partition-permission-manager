@@ -17,11 +17,16 @@ def main():
     current_user = getpass.getuser()
     click.echo(f"Current User: {current_user}\n")
 
-    partitions_output = os.popen("lsblk -o NAME,MOUNTPOINT,SIZE,FSTYPE").read()
-    partitions = partitions_output.strip().split("\n")[1:]
+    partitions_output = os.popen("lsblk -o NAME,MOUNTPOINT,SIZE,FSTYPE --noheadings").read()
+    partitions = partitions_output.strip().split("\n")
 
     for partition_info in partitions:
-        name, mountpoint, size, fstype = partition_info.split()
+        partition_info = partition_info.split()
+        if len(partition_info) < 4:
+            continue
+
+        name, mountpoint, size, fstype = partition_info
+
         if mountpoint == "":
             continue
 
