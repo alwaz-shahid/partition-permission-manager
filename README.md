@@ -18,3 +18,31 @@ This tool allows you to interactively manage permissions for mounted partitions 
    ```bash
    git clone https://github.com/yourusername/partition-permission-manager.git
    cd partition-permission-manager
+
+
+## Install the virtualenv tool (if not already installed)
+```pip install virtualenv```
+
+### Create a virtual environment named 'venv' (you can use a different name)
+```virtualenv venv```
+
+### Activate the virtual environment
+```
+source venv/bin/activate   # On Linux/macOS
+venv\Scripts\activate      # On Windows (Command Prompt)
+.\venv\Scripts\Activate    # On Windows (PowerShell)
+```
+
+
+### Install the required library:
+
+```pip install -r requirements.txt```
+
+Run the tool using sudo:
+
+```sudo python main.py```
+
+After you're done, deactivate the virtual environment:
+
+
+```deactivate```   # On Linux/macOS
